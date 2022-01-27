@@ -1,12 +1,23 @@
 <script lang="ts">
+  import { slide } from "svelte/transition";
   import { Ingredient, ingredients } from "../../data/ingredients.svelte";
   import { selectedIngredientsStore } from "../../store.svelte";
 
   let search: string = "";
-  let results: Ingredient[] = [];
+  let searchResults: Ingredient[] = [];
   let selectedIngredients: Ingredient[] = [];
+  let searchableIngredients: Ingredient[] = [];
 
-  $: results = ingredients.filter((ingredient) =>
+  $: {
+    const selectedIngredientIds = selectedIngredients.map(
+      (ingredient) => ingredient.ingredientId
+    );
+    searchableIngredients = ingredients.filter(
+      (ingredient) => !selectedIngredientIds.includes(ingredient.ingredientId)
+    );
+  }
+
+  $: searchResults = searchableIngredients.filter((ingredient) =>
     ingredient.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())
   );
 
@@ -15,7 +26,7 @@
   });
 
   const onInputBlur = () => {
-    if (results.length === 0) {
+    if (searchResults.length === 0) {
       search = "";
     }
   };
@@ -30,7 +41,9 @@
 
   const onIngredientTrash = (index: number) => {
     selectedIngredientsStore.update((ingredients) =>
-      ingredients.slice(index, index)
+      ingredients.filter(
+        (ingredient, ingredientIndex) => ingredientIndex !== index
+      )
     );
   };
 </script>
@@ -41,14 +54,14 @@
 </label>
 
 {#if search}
-  <div class="result-container">
-    {#if results.length}
-      {#each results as result (result.ingredientId)}
+  <div class="result-container" transition:slide={{ duration: 200 }}>
+    {#if searchResults.length}
+      {#each searchResults as searchResult (searchResult.ingredientId)}
         <p
           class="result ingredient-result"
-          on:click={() => onIngredientClick(result)}
+          on:click={() => onIngredientClick(searchResult)}
         >
-          {result.name}
+          {searchResult.name}
         </p>
       {/each}
     {:else}
@@ -58,12 +71,9 @@
 {/if}
 
 {#each selectedIngredients as selectedIngredient, index (selectedIngredient.ingredientId)}
-  <div class="ingredient-container">
-    <div class="ingredient-card">
-      <p>{selectedIngredient.name}</p>
-
-      <span class="trash" on:click={() => onIngredientTrash(index)}>X</span>
-    </div>
+  <div class="ingredient-card" transition:slide|local>
+    <p>{selectedIngredient.name}</p>
+    <span class="trash" on:click={() => onIngredientTrash(index)}>X</span>
   </div>
 {/each}
 
@@ -112,11 +122,8 @@
     cursor: pointer;
   }
 
-  .ingredient-container {
-    margin-top: 13px;
-  }
-
   .ingredient-card {
+    margin-top: 13px;
     border: 1px solid black;
     padding: 0 13px;
     display: flex;
